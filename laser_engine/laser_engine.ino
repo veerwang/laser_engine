@@ -14,8 +14,8 @@
 #include <elapsedMillis.h>
 #include <CRC32.h>
 
-const char gtitle[] = "Laser_Firmware";
-const char gversion[] = "V1.24";
+const char gtitle[] = "Lase_Engine_Firmware";
+const char gversion[] = "V1.25";
 char gtmpbuf[100];
 
 // Teensy4.1 board v2 def
