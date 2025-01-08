@@ -46,7 +46,14 @@ const int NUM_LASER_CHANNELS = 5;
 const int NUM_TEMP_CHANNELS = 6;
 const int NUM_VOLTAGE_CHANNELS = 6;
 const int NUM_CURRENT_CHANNELS = 6;
-const unsigned long SLEEP_TIMEOUT = 3UL * 60UL * 60UL * 1000UL; // 3 hours in milliseconds
+const unsigned long CHANNELS_SLEEP_TIMEOUT[NUM_TEMP_CHANNELS] = {
+  3 * 60UL * 60UL * 1000UL, 
+  3 * 60UL * 60UL * 1000UL, 
+  3 * 60UL * 60UL * 1000UL, 
+  3 * 60UL * 60UL * 1000UL, 
+  30UL * 60UL * 1000UL, 
+  30UL * 60UL * 1000UL
+}; // half an hours in milliseconds
 const float TEMP_ERROR_THRESHOLD = 5;
 const unsigned long ERROR_DURATION = 5000UL; // 5 seconds in milliseconds
 const unsigned long ACTIVE_DURATION = 5000UL; // 5 seconds in milliseconds
@@ -1129,8 +1136,8 @@ void loop() {
     }
 
     if (channelStates[i] == WARMING_UP || channelStates[i] == ACTIVE || channelStates[i] == ERROR) {
-      // the lasert Status is lower and kept the status over SLEEP_TIMEOUT, then ready into SLEEP status
-      if (getLaserStatus(i) == 0 && (millis() - getLaserStatusChangeTime(i)) >= SLEEP_TIMEOUT) {
+      // the lasert Status is lower and kept the status over SLEEP_TIMEOUT, then be ready to SLEEP status
+      if (getLaserStatus(i) == 0 && (millis() - getLaserStatusChangeTime(i)) >= CHANNELS_SLEEP_TIMEOUT[i]) {
         disableLaser(i);
         updateChannelStatus(i, PREPARE_SLEEP);
       }
