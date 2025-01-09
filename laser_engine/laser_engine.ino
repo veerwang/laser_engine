@@ -54,6 +54,13 @@ const unsigned long CHANNELS_SLEEP_TIMEOUT[NUM_TEMP_CHANNELS] = {
   30UL * 60UL * 1000UL, 
   30UL * 60UL * 1000UL
 }; // half an hours in milliseconds
+
+// when 550's two temperature channels enter active status, start record the
+// time. once the time is over 8 hours, then enforce close the 550 channels into sleep status
+const unsigned long ENFORCE_ACTIVE_TO_SLEEP_TIMEOUT = 8UL * 60UL * 60UL * 1000UL; // 8 hours in milliseconds
+unsigned long lastActiveTime[NUM_TEMP_CHANNELS] = {0};
+bool lastActiveTimeRecordFlag[NUM_TEMP_CHANNELS] = {false};
+
 const float TEMP_ERROR_THRESHOLD = 5;
 const unsigned long ERROR_DURATION = 5000UL; // 5 seconds in milliseconds
 const unsigned long ACTIVE_DURATION = 5000UL; // 5 seconds in milliseconds
@@ -229,6 +236,28 @@ void setParameters(const uint8_t* buffer, size_t size) {
     sendACK();
   } else {
     sendNAK();
+  }
+}
+
+void enforce_enter_sleep_startus(int channel) {
+  // only 550 channle need enforce enter sleep mode
+  if (channel <= 3)
+    return;
+
+  if (lastActiveTimeRecordFlag[channel] == false) {
+    if (channelStates[channel] == ACTIVE) {
+      lastActiveTime[channel] = millis();
+      lastActiveTimeRecordFlag[channel] = true;
+    }
+  }
+  else {
+    if (channelStates[channel] == ACTIVE) {
+      if ((millis() - lastActiveTime[channel]) >= ENFORCE_ACTIVE_TO_SLEEP_TIMEOUT) {
+        disableLaser(channel);
+        updateChannelStatus(channel, PREPARE_SLEEP);
+        lastActiveTimeRecordFlag[channel] = false;
+      }
+    }
   }
 }
 
@@ -1142,6 +1171,8 @@ void loop() {
         updateChannelStatus(i, PREPARE_SLEEP);
       }
     }
+
+    enforce_enter_sleep_startus(i);
   }
 
   // indicate the device status used LED color
