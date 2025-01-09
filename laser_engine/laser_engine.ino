@@ -57,7 +57,7 @@ const unsigned long CHANNELS_SLEEP_TIMEOUT[NUM_TEMP_CHANNELS] = {
 
 // when 550's two temperature channels enter active status, start record the
 // time. once the time is over 8 hours, then enforce close the 550 channels into sleep status
-const unsigned long ENFORCE_ACTIVE_TO_SLEEP_TIMEOUT = 8UL * 60UL * 60UL * 1000UL; // 8 hours in milliseconds
+const unsigned long ENFORCE_ACTIVE_TO_SLEEP_TIMEOUT = 8 * 60UL * 60UL * 1000UL; // 8 hours in milliseconds
 unsigned long lastActiveTime[NUM_TEMP_CHANNELS] = {0};
 bool lastActiveTimeRecordFlag[NUM_TEMP_CHANNELS] = {false};
 
@@ -239,7 +239,7 @@ void setParameters(const uint8_t* buffer, size_t size) {
   }
 }
 
-void enforce_enter_sleep_startus(int channel) {
+void enforce_enter_sleep_status(int channel) {
   // only 550 channle need enforce enter sleep mode
   if (channel <= 3)
     return;
@@ -1172,7 +1172,7 @@ void loop() {
       }
     }
 
-    enforce_enter_sleep_startus(i);
+    enforce_enter_sleep_status(i);
   }
 
   // indicate the device status used LED color
