@@ -74,6 +74,7 @@ enum CommandType{
 	CURRENT = 3,
   HITEMPSETPOINT = 4,
   ADJUSTTEMP = 5,
+  ENABLETCM = 6,
   SWITCHTCMSTATUS
 };
 
@@ -114,6 +115,7 @@ elapsedMillis timeSinceLastQueryLaserStatus = 0;
 float tempSetpoints[NUM_TEMP_CHANNELS] = {25.0, 25.0, 25.0, 25.0, 25.0, 99.7};
 // indicate the channels' adjust temperature whether have been queried
 bool getTempReady[NUM_TEMP_CHANNELS] = {false};
+bool enableTCMReady[NUM_TEMP_CHANNELS] = {false};
 
 float tempCurrentPoints[NUM_TEMP_CHANNELS] = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1};
 float highTempCurrentPoints[NUM_TEMP_CHANNELS] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6};
@@ -138,6 +140,7 @@ uint8_t gQueryVoltageChannelIndex = 0;
 uint8_t gQueryCurrentChannelIndex = 0;
 uint8_t gQueryHiTempSetPointChannelIndex = 0;
 uint8_t gQueryAdjustTempChannelIndex = 0;
+uint8_t gEnableTCMChannelIndex = 0;
 uint8_t gProcessChannelStatusIndex = 0;
 
 // TCM modules protocol process variables
@@ -409,6 +412,35 @@ void tcmDisableEnableTCMCommand(uint8_t channel_index, bool flag) {
 	tcm_reply_address = address;
 	tcm_reply_module = module_index;
 	tcm_reply_command_type = SWITCHTCMSTATUS;
+		
+	// reset tcm ptotocol analyzing buffer
+	tcm_reply_buf_length = 0;
+	
+	// enable analyzing frame
+	reply_frame_analyzing_flag = true;
+}
+
+/*
+	channel: 0~5
+ */
+void tcmStartupEnableTCMCommand(uint8_t channel_index) {
+	uint8_t address = 1; uint8_t module_index = 1;
+	getAddressModuleFromChannel(channel_index, &address, &module_index);
+	if (address == ERR_OUT_OF_RANGE && module_index == ERR_OUT_OF_RANGE)
+		return;
+
+	tcm_command_buf_length = 0;
+
+  sprintf(tcm_command_buf, "TC%d:TCSW=1@%d%c", module_index, address, 0x0D);
+
+	Serial5.write(tcm_command_buf, strlen(tcm_command_buf));
+
+  sprintf(tcm_reply_title, "CMD:REPLY=");
+
+	tcm_reply_title_length = strlen(tcm_reply_title);
+	tcm_reply_address = address;
+	tcm_reply_module = module_index;
+	tcm_reply_command_type = ENABLETCM;
 		
 	// reset tcm ptotocol analyzing buffer
 	tcm_reply_buf_length = 0;
@@ -860,6 +892,25 @@ void analyzingHostFrame() {
 }
 
 /*
+ * nomatter what, enable all channel TCMs when power up
+ */
+void enableAllTCMs() {
+  timeSinceLastQueryTemp = 0;
+
+  while(enableTCMReady[NUM_TEMP_CHANNELS - 1] == false) {
+    // each 200ms to query one channel data from TMC module
+    if (timeSinceLastQueryTemp >= EACH_QUERY_DISTANCE) {
+      timeSinceLastQueryTemp = 0;
+
+      tcmStartupEnableTCMCommand(gEnableTCMChannelIndex);
+    }
+
+    // TCM modules protocol process
+    analyzingTCMFrame();
+  }
+}
+
+/*
  get adjust temperature value from TCM, before enter main loop
  */
 void getAdjustTemperature() {
@@ -871,9 +922,7 @@ void getAdjustTemperature() {
       timeSinceLastQueryTemp = 0;
 
       // send the query frame to one of TCM modules
-      tcmQueryAdjustTempCommand(gQueryAdjustTempChannelIndex++);
-      if (gQueryAdjustTempChannelIndex == NUM_TEMP_CHANNELS)
-        gQueryAdjustTempChannelIndex = 0;
+      tcmQueryAdjustTempCommand(gQueryAdjustTempChannelIndex);
     }
 
     // TCM modules protocol process
@@ -944,9 +993,30 @@ void analyzingTCMFrame() {
 								if (tindex != ERR_OUT_OF_RANGE) {
 										tempSetpoints[tindex] = tvalue;
 										getTempReady[tindex] = true;
+                    // only be successful could deal with next channel
+                    gQueryAdjustTempChannelIndex ++;
+                    if (gQueryAdjustTempChannelIndex == NUM_TEMP_CHANNELS)
+                      gQueryAdjustTempChannelIndex = 0;
 								}
 							}
 						}
+						break;
+          case ENABLETCM:
+            {
+              float tvalue = 0;
+              if (analyzeValueFromTCMProtocol(&tvalue)) {
+                uint8_t tindex = getChannelIndex(tcm_reply_address, tcm_reply_module);
+                if (tindex != ERR_OUT_OF_RANGE) {
+                  if (int(tvalue) == 1) {
+                    enableTCMReady[tindex] = true;
+                    // only be successful could deal with next channel
+                    gEnableTCMChannelIndex ++;
+                    if (gEnableTCMChannelIndex == NUM_TEMP_CHANNELS)
+                      gEnableTCMChannelIndex = 0;
+                  }
+                }
+              }
+            }
 						break;
 					case SWITCHTCMSTATUS:
 						{
@@ -1073,6 +1143,11 @@ void setup() {
 
   // before enter main loop, get adjust temperature from TCMs
   getAdjustTemperature();
+
+  // enable all channels TCM
+  // sometimes application would disable TCM before it power off 
+  // so need be enable all channels TCM
+  enableAllTCMs();
 
 	timeSinceLastQueryTemp = 0;
 
