@@ -10,6 +10,8 @@
 
 import serial
 from serial.tools import list_ports
+import usb.core
+import usb.util
 
 import struct
 import time
@@ -22,13 +24,27 @@ from zlib import crc32
 # Configure logging
 logging.basicConfig(filename='laser_engine.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class TeensyController:
-    def __init__(self, port, baud_rate=115200):
-        ports = [p.device for p in list_ports.comports() if port == p.device]
-        if not ports:
-            raise ValueError(f"No device found with serial number: {serial_number}")
+#USBSN = '12769670'
+#DEVICE = "/dev/ttyACM0"
 
-        self.packet_serial = serial.Serial(ports[0], baudrate=baud_rate, timeout=1)
+USBSN = '12769670'
+DEVICE = None
+
+class TeensyController:
+    def __init__(self, SN=None, device=None, baud_rate=115200):
+        ports = []
+        for p in list_ports.comports():
+            if SN is not None:
+                if SN == p.serial_number:
+                    ports.append(p.device)
+            elif device is not None:
+                if device == p.device:
+                    ports.append(p.device)
+        
+        if ports == []:
+            raise ValueError("No device found with serial number or device")
+        else:
+            self.packet_serial = serial.Serial(ports[0], baudrate=baud_rate, timeout=1)
 
         self.lock = threading.RLock()
         self.query_interval = 1.0  # Query interval in seconds
@@ -171,7 +187,8 @@ def crc32_to_bytes(crc32_value):
 
 
 if __name__ == "__main__":
-    controller = TeensyController("/dev/ttyACM0")  # Adjust port as needed
+    # Adjust port or device as needed
+    controller = TeensyController(device=DEVICE, SN=USBSN)
     
     # Example usage in a separate thread
     def set_parameters_thread():
