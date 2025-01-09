@@ -57,9 +57,23 @@ const unsigned long CHANNELS_SLEEP_TIMEOUT[NUM_TEMP_CHANNELS] = {
 
 // when 550's two temperature channels enter active status, start record the
 // time. once the time is over 8 hours, then enforce close the 550 channels into sleep status
-const unsigned long ENFORCE_ACTIVE_TO_SLEEP_TIMEOUT = 8 * 60UL * 60UL * 1000UL; // 8 hours in milliseconds
+const unsigned long ENFORCE_ACTIVE_TO_SLEEP_TIMEOUT = 8UL * 60UL * 60UL * 1000UL; // 8 hours in milliseconds
 unsigned long lastActiveTime[NUM_TEMP_CHANNELS] = {0};
 bool lastActiveTimeRecordFlag[NUM_TEMP_CHANNELS] = {false};
+
+// If due to worktime is over 8 hours, the wakeupCoolDownTime would be 10 minuts
+// others is 1 seconds
+const unsigned long SHORT_WAKEUP_COOLDOWN_TIME = 1UL * 1000UL;
+const unsigned long LONG_WAKEUP_COOLDOWN_TIME = 10UL * 60UL * 1000UL;
+unsigned long wakeupCoolDownTime[NUM_TEMP_CHANNELS] = {
+  SHORT_WAKEUP_COOLDOWN_TIME,
+  SHORT_WAKEUP_COOLDOWN_TIME,
+  SHORT_WAKEUP_COOLDOWN_TIME,
+  SHORT_WAKEUP_COOLDOWN_TIME,
+  SHORT_WAKEUP_COOLDOWN_TIME,
+  SHORT_WAKEUP_COOLDOWN_TIME
+};
+unsigned long recordSleepTime[NUM_TEMP_CHANNELS];
 
 const float TEMP_ERROR_THRESHOLD = 5;
 const unsigned long ERROR_DURATION = 5000UL; // 5 seconds in milliseconds
@@ -258,6 +272,8 @@ void enforce_enter_sleep_status(int channel) {
       if ((millis() - lastActiveTime[channel]) >= ENFORCE_ACTIVE_TO_SLEEP_TIMEOUT) {
         disableLaser(channel);
         updateChannelStatus(channel, PREPARE_SLEEP);
+        recordSleepTime[channel] = millis();
+        wakeupCoolDownTime[channel] = LONG_WAKEUP_COOLDOWN_TIME;
         lastActiveTimeRecordFlag[channel] = false;
       }
     }
@@ -1226,7 +1242,9 @@ void loop() {
         break;
       case SLEEP:
         if (getLaserStatus(i) == 1) {
-          updateChannelStatus(i, WAKE_UP);
+          // need keep the wakeup signed be over cool down time
+          if (millis() - recordSleepTime[i] > wakeupCoolDownTime[i])
+            updateChannelStatus(i, WAKE_UP);
         }
         break;
       case WAKE_UP:
@@ -1244,6 +1262,9 @@ void loop() {
       if (getLaserStatus(i) == 0 && (millis() - getLaserStatusChangeTime(i)) >= CHANNELS_SLEEP_TIMEOUT[i]) {
         disableLaser(i);
         updateChannelStatus(i, PREPARE_SLEEP);
+
+        recordSleepTime[i] = millis();
+        wakeupCoolDownTime[i] = SHORT_WAKEUP_COOLDOWN_TIME;
       }
     }
 
