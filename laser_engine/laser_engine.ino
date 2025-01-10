@@ -768,17 +768,29 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
     case 'P': // Set parameters
       setParameters(buffer, size - 4);
       break;
-    case 'W': // Reset device status 
-      for (int i = 0; i < NUM_TEMP_CHANNELS; i++) {
-        enableLaser(i);
-        updateChannelStatus(i, WAKE_UP);
+    case 'S': // put one channel to sleep 
+      {
+        uint32_t channel;
+        channel = uint32_t(buffer[1] + (buffer[2]<<8) + (buffer[3]<<16) + (buffer[4]<<24));
+        if (channel == 4) {
+          doSleepAction(4);
+          doSleepAction(5);
+        }
+        else
+          doSleepAction(channel);
       }
-
-			// reset laserStatus ChangeTime
-			for (int i = 0; i < NUM_LASER_CHANNELS; i++) {
-				laserStatus[i] = digitalRead(laserStatuspins[i]);
-				lastLaserStatusChangeTime[i] = millis();
-			}
+      break;
+    case 'W': // Reset device status 
+      {
+        uint32_t channel;
+        channel = uint32_t(buffer[1] + (buffer[2]<<8) + (buffer[3]<<16) + (buffer[4]<<24));
+        if (channel == 4) {
+          doWakeupAction(4);
+          doWakeupAction(5);
+        }
+        else
+          doWakeupAction(channel);
+      }
       break;
   }
 }
@@ -1179,6 +1191,23 @@ void setup() {
   }
 }
 
+// do real sleep action
+void doSleepAction(int i) {
+  disableLaser(i);
+  updateChannelStatus(i, PREPARE_SLEEP);
+  recordSleepTime[i] = millis();
+  wakeupCoolDownTime[i] = SHORT_WAKEUP_COOLDOWN_TIME;
+}
+
+void doWakeupAction(int i) {
+  enableLaser(i);
+  updateChannelStatus(i, WAKE_UP);
+
+  // reset laserStatus ChangeTime
+  laserStatus[i] = digitalRead(laserStatuspins[i]);
+  lastLaserStatusChangeTime[i] = millis();
+}
+
 void loop() {
   // query laser status
   queryLaserStatus();
@@ -1266,11 +1295,7 @@ void loop() {
     if (channelStates[i] == WARMING_UP || channelStates[i] == ACTIVE || channelStates[i] == ERROR) {
       // the lasert Status is lower and kept the status over SLEEP_TIMEOUT, then be ready to SLEEP status
       if (getLaserStatus(i) == 0 && (millis() - getLaserStatusChangeTime(i)) >= CHANNELS_SLEEP_TIMEOUT[i]) {
-        disableLaser(i);
-        updateChannelStatus(i, PREPARE_SLEEP);
-
-        recordSleepTime[i] = millis();
-        wakeupCoolDownTime[i] = SHORT_WAKEUP_COOLDOWN_TIME;
+        doSleepAction(i);
       }
     }
 
