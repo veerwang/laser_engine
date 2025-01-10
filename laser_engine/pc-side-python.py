@@ -54,6 +54,14 @@ class TeensyController:
 
         self.crc_missmatch = 0
 
+        self.mappings = {
+            '405': 0,
+            '470': 1,
+            '638': 2,
+            '730': 3,
+            '55x': 4,
+        }
+
     def log_message(self, message):
         """
         Logs a message to the console and a file.
@@ -169,10 +177,10 @@ class TeensyController:
         '''
         API
         wake one channel from sleep status
-        channel: 0~4 means: 405, 470, 638, 735, 55x
+        channel: 405, 470, 638, 735, 55x
         '''
         with self.lock:
-            packet = b'W' + struct.pack('<I', channel)
+            packet = b'W' + struct.pack('<I', self.mappings(channel))
             crc = crc32(packet)
             self.packet_serial.write(packet + struct.pack('<I', crc))
             self.packet_serial.write(b'\x0A\x0D')
@@ -181,10 +189,10 @@ class TeensyController:
         '''
         API
         make one channel into sleep 
-        channel: 0~4 means: 405, 488, 638, 730, 55x
+        channel: 405, 470, 638, 735, 55x
         '''
         with self.lock:
-            packet = b'S' + struct.pack('<I', channel)
+            packet = b'S' + struct.pack('<I', self.mappings(channel))
             crc = crc32(packet)
             self.packet_serial.write(packet + struct.pack('<I', crc))
             self.packet_serial.write(b'\x0A\x0D')
@@ -202,8 +210,10 @@ if __name__ == "__main__":
     # Example usage in a separate thread
     def set_parameters_thread():
         time.sleep(2)  # Wait for 5 seconds before setting parameters
-        #controller.put_to_sleep(4)
-        #controller.wake_up(4)
+
+        # channel: 405, 470, 638, 735, 55x
+        controller.put_to_sleep('55x')
+        #controller.wake_up('55x')
 
     parameter_thread = threading.Thread(target=set_parameters_thread)
     parameter_thread.start()
