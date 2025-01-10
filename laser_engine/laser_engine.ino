@@ -753,7 +753,6 @@ void sendStatus() {
     int offset = 1 + NUM_LASER_CHANNELS + NUM_TEMP_CHANNELS * 7 + NUM_TEMP_CHANNELS * 2 + i * 2;
 
     int16_t temp = (int16_t)(readHighTempSetPoint(i) * 100); // High Temperature setpoints
-    temp = key_status;
     statusPacket[offset + 0] = temp >> 8;
     statusPacket[offset + 1] = temp & 0xFF;
 	}
