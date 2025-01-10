@@ -54,33 +54,6 @@ class TeensyController:
 
         self.crc_missmatch = 0
 
-    def query_status(self):
-        with self.lock:
-            packet = b'Q'
-            crc = crc32(packet)
-            self.packet_serial.write(packet + struct.pack('<I', crc))
-            self.packet_serial.write(b'\x0A\x0D')
-
-    def set_temperature_setpoints(self, setpoints):
-        with self.lock:
-            if len(setpoints) != 6:
-                raise ValueError("Must provide 6 temperature setpoints")
-            
-            packet = b'S' + struct.pack('6f', *setpoints)
-            crc = crc32(packet)
-            try:
-                self.packet_serial.write(packet + struct.pack('<I', crc))
-                self.packet_serial.write(b'\x0A\x0D')
-            except Exception as e:
-                print(e)
-
-    def reset_TCM_status(self):
-        with self.lock:
-            packet = b'R'
-            crc = crc32(packet)
-            self.packet_serial.write(packet + struct.pack('<I', crc))
-            self.packet_serial.write(b'\x0A\x0D')
-
     def log_message(self, message):
         """
         Logs a message to the console and a file.
@@ -181,6 +154,46 @@ class TeensyController:
         finally:
             self.stop()
 
+    def query_status(self):
+        '''
+        API
+        query all status information from firmware
+        '''
+        with self.lock:
+            packet = b'Q'
+            crc = crc32(packet)
+            self.packet_serial.write(packet + struct.pack('<I', crc))
+            self.packet_serial.write(b'\x0A\x0D')
+
+    def set_temperature_setpoints(self, setpoints):
+        '''
+        API
+        set points values into firmware 
+        '''
+        with self.lock:
+            if len(setpoints) != 6:
+                raise ValueError("Must provide 6 temperature setpoints")
+            
+            packet = b'P' + struct.pack('6f', *setpoints)
+            crc = crc32(packet)
+            try:
+                self.packet_serial.write(packet + struct.pack('<I', crc))
+                self.packet_serial.write(b'\x0A\x0D')
+            except Exception as e:
+                print(e)
+
+    def wake_up(self):
+        '''
+        API
+        wake up all channels from sleep status
+        '''
+        with self.lock:
+            packet = b'W'
+            crc = crc32(packet)
+            self.packet_serial.write(packet + struct.pack('<I', crc))
+            self.packet_serial.write(b'\x0A\x0D')
+
+
 def crc32_to_bytes(crc32_value):
     # Pack the CRC32 integer into bytes using little-endian format
     return struct.pack('<I', crc32_value)
@@ -196,7 +209,7 @@ if __name__ == "__main__":
         # 402nm 470nm  638 735 550-1 550-2
         #new_setpoints = [25.0, 25.0, 25.0, 25.0, 25.0, 103.5]
         #controller.set_temperature_setpoints(new_setpoints)
-        #controller.reset_TCM_status()
+        #controller.wake_up()
 
     parameter_thread = threading.Thread(target=set_parameters_thread)
     parameter_thread.start()

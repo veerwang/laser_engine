@@ -765,10 +765,10 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
     case 'Q': // Query status
       sendStatus();
       break;
-    case 'S': // Set parameters
+    case 'P': // Set parameters
       setParameters(buffer, size - 4);
       break;
-    case 'R': // Reset device status 
+    case 'W': // Reset device status 
       for (int i = 0; i < NUM_TEMP_CHANNELS; i++) {
         enableLaser(i);
         updateChannelStatus(i, WAKE_UP);
@@ -1171,6 +1171,11 @@ void setup() {
   // Initialize the last transition
   for (int i = 0; i < NUM_TEMP_CHANNELS; i++) {
     lastChannelStatesChangeTime[i] = millis();
+  }
+  
+  // only the channels status reach ACTIVE status could enable laser
+  for (int i = 0; i < NUM_TEMP_CHANNELS; i++) {
+    disableLaser(i);
   }
 }
 
