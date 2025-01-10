@@ -180,7 +180,7 @@ class TeensyController:
         channel: 405, 470, 638, 735, 55x
         '''
         with self.lock:
-            packet = b'W' + struct.pack('<I', self.mappings(channel))
+            packet = b'W' + struct.pack('<I', self.mappings[channel])
             crc = crc32(packet)
             self.packet_serial.write(packet + struct.pack('<I', crc))
             self.packet_serial.write(b'\x0A\x0D')
@@ -192,7 +192,7 @@ class TeensyController:
         channel: 405, 470, 638, 735, 55x
         '''
         with self.lock:
-            packet = b'S' + struct.pack('<I', self.mappings(channel))
+            packet = b'S' + struct.pack('<I', self.mappings[channel])
             crc = crc32(packet)
             self.packet_serial.write(packet + struct.pack('<I', crc))
             self.packet_serial.write(b'\x0A\x0D')
