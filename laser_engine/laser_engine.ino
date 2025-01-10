@@ -42,6 +42,9 @@ static const int STATUS_550nm_TTL = 32;
 static const int STATUS_638nm_TTL = 29;
 static const int STATUS_735nm_TTL = 28;
 
+// the pin status of KEY
+static const int Interlock_pin = 9;
+
 const int NUM_LASER_CHANNELS = 5;
 const int NUM_TEMP_CHANNELS = 6;
 const int NUM_VOLTAGE_CHANNELS = 6;
@@ -178,6 +181,8 @@ CommandType tcm_reply_command_type = NONE;
 uint8_t host_protocol_buf[256];
 uint8_t host_protocol_buf_length = 0;
 
+uint8_t key_status = 0; 
+
 enum LEDState {
   RED,
   BLUE,
@@ -221,6 +226,14 @@ void set_status_LED(LEDState status) {
 
 void indicate_device_status() {
 	bool flag = false;
+
+  // if key_status is at OFF status, change the light to RED + GREEN
+  if (key_status == 0) {
+    digitalWrite(LED_G, HIGH);
+    digitalWrite(LED_R, HIGH);
+    return;
+  }
+
   for (int i = 0; i < NUM_TEMP_CHANNELS; i++) {
     if (channelStates[i] == ERROR)
 			flag = true;
@@ -697,6 +710,9 @@ void queryLaserStatus() {
       lastLaserStatusChangeTime[i] = millis();
     }
   }
+
+  // also record the key status
+  key_status = digitalRead(Interlock_pin);
 }
 
 void sendStatus() {
@@ -737,6 +753,7 @@ void sendStatus() {
     int offset = 1 + NUM_LASER_CHANNELS + NUM_TEMP_CHANNELS * 7 + NUM_TEMP_CHANNELS * 2 + i * 2;
 
     int16_t temp = (int16_t)(readHighTempSetPoint(i) * 100); // High Temperature setpoints
+    temp = key_status;
     statusPacket[offset + 0] = temp >> 8;
     statusPacket[offset + 1] = temp & 0xFF;
 	}
@@ -1164,6 +1181,8 @@ void setup() {
   for (int i = 0; i < NUM_LASER_CHANNELS; i++) {
     pinMode(laserStatuspins[i], INPUT);
   }
+
+  pinMode(Interlock_pin, INPUT);
 
   // initialize the last lasert status change time
   for (int i = 0; i < NUM_LASER_CHANNELS; i++) {
