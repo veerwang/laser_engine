@@ -15,7 +15,7 @@
 #include <CRC32.h>
 
 const char gtitle[] = "Lase_Engine_Firmware";
-const char gversion[] = "V1.25";
+const char gversion[] = "V1.26";
 char gtmpbuf[100];
 
 // Teensy4.1 board v2 def
@@ -58,17 +58,12 @@ const unsigned long CHANNELS_SLEEP_TIMEOUT[NUM_TEMP_CHANNELS] = {
   30UL * 60UL * 1000UL
 }; // half an hours in milliseconds
 
-// when 550's two temperature channels enter active status, start record the
-// time. once the time is over 8 hours, then enforce close the 550 channels into sleep status
-#define ENABLE_ENFORCE_SLEEP false
-const unsigned long ENFORCE_ACTIVE_TO_SLEEP_TIMEOUT = 8UL * 60UL * 60UL * 1000UL; // 8 hours in milliseconds
 unsigned long lastActiveTime[NUM_TEMP_CHANNELS] = {0};
 bool lastActiveTimeRecordFlag[NUM_TEMP_CHANNELS] = {false};
 
 // If due to worktime is over 8 hours, the wakeupCoolDownTime would be 10 minuts
 // others is 1 seconds
 const unsigned long SHORT_WAKEUP_COOLDOWN_TIME = 1UL * 1000UL;
-const unsigned long LONG_WAKEUP_COOLDOWN_TIME = 10UL * 60UL * 1000UL;
 unsigned long wakeupCoolDownTime[NUM_TEMP_CHANNELS] = {
   SHORT_WAKEUP_COOLDOWN_TIME,
   SHORT_WAKEUP_COOLDOWN_TIME,
@@ -267,30 +262,6 @@ void setParameters(const uint8_t* buffer, size_t size) {
     sendACK();
   } else {
     sendNAK();
-  }
-}
-
-void enforce_enter_sleep_status(int channel) {
-  // only 550 channle need enforce enter sleep mode
-  if (channel <= 3)
-    return;
-
-  if (lastActiveTimeRecordFlag[channel] == false) {
-    if (channelStates[channel] == ACTIVE) {
-      lastActiveTime[channel] = millis();
-      lastActiveTimeRecordFlag[channel] = true;
-    }
-  }
-  else {
-    if (channelStates[channel] == ACTIVE) {
-      if ((millis() - lastActiveTime[channel]) >= ENFORCE_ACTIVE_TO_SLEEP_TIMEOUT) {
-        disableLaser(channel);
-        updateChannelStatus(channel, PREPARE_SLEEP);
-        recordSleepTime[channel] = millis();
-        wakeupCoolDownTime[channel] = LONG_WAKEUP_COOLDOWN_TIME;
-        lastActiveTimeRecordFlag[channel] = false;
-      }
-    }
   }
 }
 
@@ -1316,9 +1287,6 @@ void loop() {
         doSleepAction(i);
       }
     }
-
-    if (ENABLE_ENFORCE_SLEEP == true)
-      enforce_enter_sleep_status(i);
   }
 
   // indicate the device status used LED color
