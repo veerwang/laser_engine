@@ -27,7 +27,7 @@ logging.basicConfig(filename='laser_engine.log', level=logging.INFO, format='%(a
 #USBSN = '12769670'
 #DEVICE = "/dev/ttyACM0"
 
-USBSN = '12769670'
+USBSN = '16640530'
 DEVICE = None
 
 class TeensyController:
@@ -97,7 +97,7 @@ class TeensyController:
                 tec_voltage = struct.unpack('>h', temp_data[i*7 + 3:i*7 + 5])[0] / 100.0
                 tec_current = struct.unpack('>h', temp_data[i*7 + 5:i*7 + 7])[0] / 100.0
                 
-                state_str = ["WARMING_UP", "CHECK_ACTIVE", "ACTIVE", "WAKE_UP", "SLEEP", "PREPARE_SLEEP", "CHECK_ERROR", "ERROR"][state]
+                state_str = ["DISABLE", "WARMING_UP", "CHECK_ACTIVE", "ACTIVE", "WAKE_UP", "SLEEP", "PREPARE_SLEEP", "CHECK_ERROR", "ERROR"][state]
                 self.log_message(f"Channel {i}: State: {state_str}, Temp: {temp:.2f}°C, TEC Voltage: {tec_voltage:.2f}, TEC Current: {tec_current:.2f}")
 
             for i in range(6):
@@ -212,8 +212,8 @@ if __name__ == "__main__":
         time.sleep(2)  # Wait for 5 seconds before setting parameters
 
         # channel: 405, 470, 638, 735, 55x
-        controller.put_to_sleep('55x')
-        #controller.wake_up('55x')
+        # controller.put_to_sleep('55x')
+        # controller.wake_up('55x')
 
     parameter_thread = threading.Thread(target=set_parameters_thread)
     parameter_thread.start()

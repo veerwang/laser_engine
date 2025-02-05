@@ -15,7 +15,18 @@
 #include <CRC32.h>
 
 const char gtitle[] = "Lase_Engine_Firmware";
-const char gversion[] = "V1.26";
+
+/*
+ * only three modules used, address: 1, 2, 3, 4, 5
+ */
+//#define FIVE_MODULES true
+
+/*
+ * only three modules used, address: 1, 2, 5
+ */
+#define THREE_MODULES true
+
+const char gversion[] = "V1.26-T";
 char gtmpbuf[100];
 
 // Teensy4.1 board v2 def
@@ -102,9 +113,11 @@ const int8_t ERR_OUT_OF_RANGE = 100;
  * PREPARE_SLEEP: (middle status) do the action before enter real SLEEP status
  * WAKE_UP: (middle status) do the action for return status from SLEEP to WARMING_UP
  * CHECK_ERROR: (middle status) before enter ERROR status, do some check for comfirming
+ * DISABLE: do not need to deal with the status
  *
  */
 enum ChannelState {
+  DISABLE,
   WARMING_UP,
   CHECK_ACTIVE,
   ACTIVE,
@@ -139,7 +152,13 @@ float voltageCurrentPoints[NUM_VOLTAGE_CHANNELS] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6
 // current value of channels
 float currentCurrentPoints[NUM_CURRENT_CHANNELS] = {0, 0, 0, 0, 0.1, 0.2};
 
-ChannelState channelStates[NUM_TEMP_CHANNELS] = {WARMING_UP};
+#ifdef FIVE_MODULES
+ChannelState channelStates[NUM_TEMP_CHANNELS] = {WARMING_UP, WARMING_UP, WARMING_UP, WARMING_UP, WARMING_UP, WARMING_UP};
+#endif
+#ifdef THREE_MODULES
+ChannelState channelStates[NUM_TEMP_CHANNELS] = {WARMING_UP, WARMING_UP, DISABLE, DISABLE, WARMING_UP, WARMING_UP};
+#endif
+
 unsigned long lastChannelStatesChangeTime[NUM_TEMP_CHANNELS] = {0};
 
 elapsedMillis timeInErrorState[NUM_TEMP_CHANNELS] = {0};
@@ -242,7 +261,12 @@ void indicate_device_status() {
 	// reset flag
 	flag = false;
   for (int i = 0; i < NUM_TEMP_CHANNELS; i++) {
+#ifdef FIVE_MODULES
     if (channelStates[i] != ACTIVE)
+#endif
+#ifdef THREE_MODULES
+    if (channelStates[i] != ACTIVE && channelStates[i] != DISABLE)
+#endif
 			flag = true;
 	}
 	if (flag == true) {
@@ -759,6 +783,10 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
       {
         uint32_t channel;
         channel = uint32_t(buffer[1] + (buffer[2]<<8) + (buffer[3]<<16) + (buffer[4]<<24));
+#ifdef THREE_MODULES
+        if (channel == 2 || channel == 3)
+          return;
+#endif
         if (channel == 4) {
           doSleepAction(4);
           doSleepAction(5);
@@ -771,6 +799,10 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
       {
         uint32_t channel;
         channel = uint32_t(buffer[1] + (buffer[2]<<8) + (buffer[3]<<16) + (buffer[4]<<24));
+#ifdef THREE_MODULES
+        if (channel == 2 || channel == 3)
+          return;
+#endif
         if (channel == 4) {
           doWakeupAction(4);
           doWakeupAction(5);
@@ -1010,7 +1042,14 @@ void analyzingTCMFrame() {
 										tempSetpoints[tindex] = tvalue;
 										getTempReady[tindex] = true;
                     // only be successful could deal with next channel
+#ifdef FIVE_MODULES
                     gQueryAdjustTempChannelIndex ++;
+#endif
+#ifdef THREE_MODULES
+                    gQueryAdjustTempChannelIndex ++;
+                    if (gQueryAdjustTempChannelIndex == 2)
+                      gQueryAdjustTempChannelIndex = 4;
+#endif
                     if (gQueryAdjustTempChannelIndex == NUM_TEMP_CHANNELS)
                       gQueryAdjustTempChannelIndex = 0;
 								}
@@ -1025,8 +1064,15 @@ void analyzingTCMFrame() {
                 if (tindex != ERR_OUT_OF_RANGE) {
                   if (int(tvalue) == 1) {
                     enableTCMReady[tindex] = true;
+#ifdef FIVE_MODULES
                     // only be successful could deal with next channel
                     gEnableTCMChannelIndex ++;
+#endif
+#ifdef THREE_MODULES
+                    gEnableTCMChannelIndex ++;
+                    if (gEnableTCMChannelIndex == 2)
+                      gEnableTCMChannelIndex = 4;
+#endif
                     if (gEnableTCMChannelIndex == NUM_TEMP_CHANNELS)
                       gEnableTCMChannelIndex = 0;
                   }
@@ -1174,10 +1220,21 @@ void setup() {
     lastChannelStatesChangeTime[i] = millis();
   }
   
+#ifdef FIVE_MODULES
   // only the channels status reach ACTIVE status could enable laser
   for (int i = 0; i < NUM_TEMP_CHANNELS; i++) {
     disableLaser(i);
   }
+#endif
+
+#ifdef THREE_MODULES
+  for (int i = 0; i < NUM_TEMP_CHANNELS; i++) {
+    disableLaser(i);
+  }
+  // always enable adrees 2 and 3 disable channels
+  enableLaser(2);
+  enableLaser(3);
+#endif
 }
 
 // do real sleep action
@@ -1278,6 +1335,9 @@ void loop() {
       case PREPARE_SLEEP:
         // do nothing, just wait for TCM be changed to disable status 
 				// then enter SLEEP status 
+        break;
+      case DISABLE:
+        // in this status, don't need change anything
         break;
     }
 
