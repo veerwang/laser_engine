@@ -15,7 +15,7 @@
 #include <CRC32.h>
 
 const char gtitle[] = "Lase_Engine_Firmware";
-const char gversion[] = "V1.26";
+const char gversion[] = "V1.27";
 char gtmpbuf[100];
 
 // Teensy4.1 board v2 def
@@ -56,7 +56,7 @@ const unsigned long CHANNELS_SLEEP_TIMEOUT[NUM_TEMP_CHANNELS] = {
   3 * 60UL * 60UL * 1000UL, 
   30UL * 60UL * 1000UL, 
   30UL * 60UL * 1000UL
-}; // half an hours in milliseconds
+};
 
 unsigned long lastActiveTime[NUM_TEMP_CHANNELS] = {0};
 bool lastActiveTimeRecordFlag[NUM_TEMP_CHANNELS] = {false};
@@ -1189,12 +1189,25 @@ void doSleepAction(int i) {
 }
 
 void doWakeupAction(int i) {
-  enableLaser(i);
+  // do not need enable laser immediately.
+  // when channel status enter ACTIVE, then anble laser
+  //enableLaser(i);
   updateChannelStatus(i, WAKE_UP);
+}
 
-  // reset laserStatus ChangeTime
-  laserStatus[i] = digitalRead(laserStatuspins[i]);
-  lastLaserStatusChangeTime[i] = millis();
+void doEnableLasersAction() {
+  for (int i = 0; i < NUM_TEMP_CHANNELS; i++) {
+    if (i != 4 && i != 5) {
+      if (channelStates[i] == ACTIVE) {
+        enableLaser(i);
+      }
+    }
+    else {
+      if (channelStates[4] == ACTIVE && channelStates[5] == ACTIVE) {
+        enableLaser(i);
+      }
+    }
+  }
 }
 
 void loop() {
@@ -1228,7 +1241,7 @@ void loop() {
         }
         else {
           if ((millis() - lastChannelStatesChangeTime[i]) >= ACTIVE_DURATION) {
-            enableLaser(i);
+            //enableLaser(i);
             updateChannelStatus(i, ACTIVE);
           }
         }
@@ -1288,6 +1301,11 @@ void loop() {
       }
     }
   }
+
+  // only the chanel's status is at ACTIVE
+  // we could enable the channel laser 
+  // especially for channel 4 and 5
+  doEnableLasersAction();
 
   // indicate the device status used LED color
   // Red: if there is one channel ERROR
