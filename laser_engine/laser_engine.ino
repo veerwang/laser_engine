@@ -1250,6 +1250,16 @@ void doWakeupAction(int i) {
   // when channel status enter ACTIVE, then anble laser
   //enableLaser(i);
   updateChannelStatus(i, WAKE_UP);
+
+  // laser chanel is 5 and status chanel is 6
+  if (i == 5)
+    i = 4;
+
+  // enforce to reset laserStatus ChangeTime
+  // otherwise the application would fall into sleep
+  // again
+  laserStatus[i] = digitalRead(laserStatuspins[i]);
+  lastLaserStatusChangeTime[i] = millis();
 }
 
 void doEnableLasersAction() {
