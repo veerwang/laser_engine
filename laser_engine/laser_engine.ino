@@ -26,7 +26,7 @@ const char gtitle[] = "Lase_Engine_Firmware";
  */
 #define THREE_MODULES true
 
-const char gversion[] = "V1.26-T";
+const char gversion[] = "V1.27-T";
 char gtmpbuf[100];
 
 // Teensy4.1 board v2 def
@@ -67,7 +67,7 @@ const unsigned long CHANNELS_SLEEP_TIMEOUT[NUM_TEMP_CHANNELS] = {
   3 * 60UL * 60UL * 1000UL, 
   30UL * 60UL * 1000UL, 
   30UL * 60UL * 1000UL
-}; // half an hours in milliseconds
+};
 
 unsigned long lastActiveTime[NUM_TEMP_CHANNELS] = {0};
 bool lastActiveTimeRecordFlag[NUM_TEMP_CHANNELS] = {false};
@@ -1231,7 +1231,7 @@ void setup() {
   for (int i = 0; i < NUM_TEMP_CHANNELS; i++) {
     disableLaser(i);
   }
-  // always enable adrees 2 and 3 disable channels
+  // always enable adrees 2 and 3 laser channels
   enableLaser(2);
   enableLaser(3);
 #endif
@@ -1246,12 +1246,47 @@ void doSleepAction(int i) {
 }
 
 void doWakeupAction(int i) {
-  enableLaser(i);
+  // do not need enable laser immediately.
+  // when channel status enter ACTIVE, then anble laser
+  //enableLaser(i);
   updateChannelStatus(i, WAKE_UP);
+}
 
-  // reset laserStatus ChangeTime
-  laserStatus[i] = digitalRead(laserStatuspins[i]);
-  lastLaserStatusChangeTime[i] = millis();
+void doEnableLasersAction() {
+#ifdef FIVE_MODULES
+  for (int i = 0; i < NUM_TEMP_CHANNELS; i++) {
+    if (i != 4 && i != 5) {
+      if (channelStates[i] == ACTIVE) {
+        enableLaser(i);
+      }
+    }
+    else {
+      if (channelStates[4] == ACTIVE && channelStates[5] == ACTIVE) {
+        enableLaser(i);
+      }
+    }
+  }
+#endif
+
+#ifdef THREE_MODULES
+  for (int i = 0; i < NUM_TEMP_CHANNELS; i++) {
+    // do not need change anything
+    if (channelStates[i] == DISABLE ) {
+      continue;
+    }
+
+    if (i != 4 && i != 5) {
+      if (channelStates[i] == ACTIVE) {
+        enableLaser(i);
+      }
+    }
+    else {
+      if (channelStates[4] == ACTIVE && channelStates[5] == ACTIVE) {
+        enableLaser(i);
+      }
+    }
+  }
+#endif
 }
 
 void loop() {
@@ -1285,7 +1320,7 @@ void loop() {
         }
         else {
           if ((millis() - lastChannelStatesChangeTime[i]) >= ACTIVE_DURATION) {
-            enableLaser(i);
+            //enableLaser(i);
             updateChannelStatus(i, ACTIVE);
           }
         }
@@ -1348,6 +1383,11 @@ void loop() {
       }
     }
   }
+
+  // only the chanel's status is at ACTIVE
+  // we could enable the channel laser 
+  // especially for channel 4 and 5
+  doEnableLasersAction();
 
   // indicate the device status used LED color
   // Red: if there is one channel ERROR
