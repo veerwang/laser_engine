@@ -212,7 +212,7 @@ if __name__ == "__main__":
         time.sleep(2)  # Wait for 5 seconds before setting parameters
 
         # channel: 405, 470, 638, 735, 55x
-        controller.put_to_sleep('55x')
+        #controller.put_to_sleep('55x')
         #controller.wake_up('55x')
 
     parameter_thread = threading.Thread(target=set_parameters_thread)
