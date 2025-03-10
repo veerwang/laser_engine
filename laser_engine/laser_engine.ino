@@ -132,10 +132,10 @@ CRC32 crc;
 // Pins for laser channels (adjust as needed)
 const int laserPins[NUM_LASER_CHANNELS] = {LASER_402nm, LASER_470nm, LASER_638nm, LASER_735nm, LASER_550nm};
 
-// Add a global array to track laser pin states, avoid to disable or enable lasers status 
+// Add a global array to track laser pin states, avoid to disable or enable lasers status too many times
 // false: means the laser pin is at disable action status 
 // true: means the laser pin is at enable action status 
-bool laserPinActionStates[NUM_LASER_CHANNELS] = {true};
+bool laserPinActionStates[NUM_LASER_CHANNELS] = {false};
 
 // read the real laser status pins
 const int laserStatuspins[NUM_LASER_CHANNELS] = {STATUS_402nm_TTL, STATUS_470nm_TTL, STATUS_638nm_TTL, STATUS_735nm_TTL, STATUS_550nm_TTL};
@@ -1199,11 +1199,11 @@ void setup() {
 
   digitalWrite(LED_G, HIGH);
 
-  // enable pins
+  // set the control pins to OUTPUT status
+  // and disable the control pins as well
   for (int i = 0; i < NUM_LASER_CHANNELS; i++) {
     pinMode(laserPins[i], OUTPUT);
-    digitalWrite(laserPins[i], LOW);
-    laserPinActionStates[i] = true;
+    digitalWrite(laserPins[i], HIGH);
   }
 
   pinMode(Dispecker_pin, OUTPUT);
