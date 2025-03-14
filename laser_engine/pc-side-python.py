@@ -116,6 +116,11 @@ class TeensyController:
         elif packet[0] == ord('N'):  # NAK packet
             print("Command not acknowledged")
 
+        elif packet[0] == ord('G'):  # laser status packet 
+            laser_channel = packet[1:2]
+            laser_status = packet[2:3]
+            self.log_message(f"Channel {laser_channel}: " + str([bool(x) for x in laser_status]))
+
     def query_loop(self):
         while self.running:
             self.query_status()
@@ -156,7 +161,6 @@ class TeensyController:
             self.start()
             while True:
                 self.query_status()
-                time.sleep(1)
         except KeyboardInterrupt:
             print("Stopping...")
         finally:
@@ -197,6 +201,18 @@ class TeensyController:
             self.packet_serial.write(packet + struct.pack('<I', crc))
             self.packet_serial.write(b'\x0A\x0D')
 
+    def get_laser_status(self, channel):
+        '''
+        API
+        get the channel status
+        channel: 405, 470, 638, 735, 55x
+        '''
+        with self.lock:
+            packet = b'G' + struct.pack('<I', self.mappings[channel])
+            crc = crc32(packet)
+            self.packet_serial.write(packet + struct.pack('<I', crc))
+            self.packet_serial.write(b'\x0A\x0D')
+
 
 def crc32_to_bytes(crc32_value):
     # Pack the CRC32 integer into bytes using little-endian format
@@ -212,8 +228,11 @@ if __name__ == "__main__":
         time.sleep(2)  # Wait for 5 seconds before setting parameters
 
         # channel: 405, 470, 638, 735, 55x
-        #controller.put_to_sleep('55x')
-        #controller.wake_up('55x')
+        # controller.put_to_sleep('55x')
+        # controller.wake_up('55x')
+
+        # the information display in the on_packet_received function
+        #controller.get_status('55x')
 
     parameter_thread = threading.Thread(target=set_parameters_thread)
     parameter_thread.start()
