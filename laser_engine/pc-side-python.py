@@ -10,16 +10,12 @@
 
 import serial
 from serial.tools import list_ports
-import usb.core
-import usb.util
 
 import struct
 import time
 import threading
 import datetime
 import logging
-
-from zlib import crc32
 
 # Configure logging
 logging.basicConfig(filename='laser_engine.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
