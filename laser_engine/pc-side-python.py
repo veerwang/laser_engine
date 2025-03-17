@@ -161,6 +161,7 @@ class TeensyController:
             self.start()
             while True:
                 self.query_status()
+                time.sleep(1)
         except KeyboardInterrupt:
             print("Stopping...")
         finally:
