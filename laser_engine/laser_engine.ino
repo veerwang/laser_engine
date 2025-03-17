@@ -775,6 +775,23 @@ void sendStatus() {
 	uploadData(finalPacket, sizeof(finalPacket));
 }
 
+/*
+ * channel: from 0 to 4
+ */
+void sendChannelStatus(uint32_t channel) {
+  uint8_t statusPacket[1 + 1 + 1];
+  statusPacket[0] = 'G'; // Status packet identifier
+  statusPacket[1] = channel;
+  statusPacket[2] = laserStatus[channel];
+
+  uint32_t packetCRC = crc.calculate(statusPacket, sizeof(statusPacket));
+  uint8_t finalPacket[sizeof(statusPacket) + 4];
+  memcpy(finalPacket, statusPacket, sizeof(statusPacket));
+  memcpy(finalPacket + sizeof(statusPacket), &packetCRC, 4);
+
+  uploadData(finalPacket, sizeof(finalPacket));
+}
+
 void onPacketReceived(const uint8_t* buffer, size_t size) {
   if (size < 5) return; // Minimum packet size (1 byte command + 4 bytes CRC)
 
@@ -824,6 +841,13 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
         }
         else
           doWakeupAction(channel);
+      }
+      break;
+    case 'G': // Query channel status
+      {
+        uint32_t channel;
+        channel = uint32_t(buffer[1] + (buffer[2]<<8) + (buffer[3]<<16) + (buffer[4]<<24));
+        sendChannelStatus(channel);
       }
       break;
   }
