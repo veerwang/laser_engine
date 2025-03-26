@@ -320,7 +320,7 @@ def get_command_return_value(instruments):
 # address: TCM address
 def x207_PID_tunning_instruments_attach_address(address):
     PIDTuningInstruments = [
-        [f'TC1:TCPIDCAL=4@{address}', 'A'],
+        [f'TC1:TCPIDALGO=4@{address}', 'A'],
         [f'TC1:TCSW=1@{address}', 'A'],
         [f'TC1:TCTUNESTATUS?@{address}', 'P'],
         [f'TC1:TCTD!@{address}', 'S'],
@@ -333,7 +333,7 @@ def x207_PID_tunning_instruments_attach_address(address):
 # address: TCM address : 6
 def E1041_PID_tunning_instruments_attach_address(address):
     PIDTuningInstruments = [
-        [f'TC1:TCPIDCAL=4@{address}', 'A'],
+        [f'TC1:TCPIDALGO=4@{address}', 'A'],
         [f'TC1:TCSW=1@{address}', 'A'],
         [f'TC1:TCTUNESTATUS?@{address}', 'P'],
         [f'TC1:TCPIDP!@{address}', 'S'],
