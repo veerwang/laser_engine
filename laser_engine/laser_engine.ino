@@ -190,7 +190,8 @@ uint8_t key_status = 0;
 enum LEDState {
   RED,
   BLUE,
- 	GREEN
+  GREEN,
+  YELLOW
 };
 
 LEDState led_state = GREEN;
@@ -223,6 +224,15 @@ void set_status_LED(LEDState status) {
 			led_state = GREEN;
 			break;
 
+    case YELLOW:
+      if (led_state == YELLOW)
+        return;
+  		digitalWrite(LED_R, HIGH);
+  		digitalWrite(LED_G, HIGH);
+  		digitalWrite(LED_B, LOW);
+			led_state = YELLOW;
+			break;
+
 		default:
 			break;
 	}
@@ -234,8 +244,7 @@ void indicate_device_status() {
   if (config_enable_key_status_led) {
     // if key_status is at OFF status, change the light to RED + GREEN
     if (key_status == 0) {
-      digitalWrite(LED_G, HIGH);
-      digitalWrite(LED_R, HIGH);
+      set_status_LED(YELLOW);
       return;
     }
   }
