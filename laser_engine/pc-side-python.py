@@ -20,11 +20,14 @@ import logging
 # Configure logging
 logging.basicConfig(filename='laser_engine.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-#USBSN = '12769670'
-#DEVICE = "/dev/ttyACM0"
+from zlib import crc32
 
-USBSN = '12769670'
-DEVICE = None
+#USBSN = '12769670'
+USBSN = None
+DEVICE = "/dev/ttyACM0"
+
+#USBSN = '12769670'
+#DEVICE = None
 
 class TeensyController:
     def __init__(self, SN=None, device=None, baud_rate=115200):
